@@ -8,4 +8,16 @@ name = "Sakura"
     <p>Hello {{ name }}</p>
     <p>{{ x + 5 }}</p>
 </div>
+<div>
+    <p
+      sk-if="x > 5"
+    >
+      big
+    </p>
+    <p
+      sk-if="x < 5"
+    >
+      small
+    </p>
+</div>
 </sk-template>
