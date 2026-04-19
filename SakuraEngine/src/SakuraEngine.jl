@@ -43,6 +43,8 @@ function render_file(path::String)
 
     # Clean up extra blank lines left after removing sk-if
     html = replace(html, r"\n{3,}" => "\n\n")
+    # Replace multiple consecutive line breaks with a single line break
+    html = replace(html, r"\n\s*\n" => "\n")
     return strip(html)
 end
 
