@@ -24,17 +24,15 @@ end
 function render_template(template::AbstractString, mod::Module)
     template = process_sk_if(template, mod)
 
-    template = replace(template, r"\{\{(.*?)\}\}"s => function(m)
-        # Rematch to ensure it get captures
-        caps = match(r"\{\{(.*?)\}\}"s, m).captures
-        clean_expr = strip(caps[1])
-        
+    result = template
+    for m in reverse(collect(eachmatch(r"\{\{(.*?)\}\}"s, template)))
+        clean_expr = strip(m.captures[1])
         ex = Meta.parse(clean_expr)
         val = Core.eval(mod, ex)
-        return string(val)
-    end)
+        result = result[1:m.offset-1] * string(val) * result[m.offset+length(m.match):end]
+    end
 
-    return template
+    return result
 end
 
 function render_file(path::String)
@@ -43,36 +41,44 @@ function render_file(path::String)
     mod = eval_script(script)
     html = render_template(template, mod)
 
-    # Cleanup : Reduce multiple consecutive line breaks to one and remove lines containing only whitespace
-    html = replace(html, r"\n\s*\n" => "\n")
+    # Clean up extra blank lines left after removing sk-if
+    html = replace(html, r"\n{3,}" => "\n\n")
     return strip(html)
 end
 
 function process_sk_if(template::AbstractString, mod::Module)
     pattern = r"<(\w+)([^>]*)\s+sk-if=\"(.*?)\"([^>]*)>(.*?)</\1>"s
 
-    return replace(template, pattern => function(m)
-        caps = match(pattern, m).captures
-        tag = caps[1]
-        before_attrs = caps[2]
-        condition_str = caps[3]
-        after_attrs = caps[4]
-        inner = caps[5]
+    prev = ""
+    curr = String(template)
 
-        # eval condition
-        cond_expr = Meta.parse(condition_str)
-        result = Core.eval(mod, cond_expr)
+    while prev != curr
+        prev = curr
+        matches = collect(eachmatch(pattern, curr))
+        # Replace from back to front to avoid displacement issues
+        for m in reverse(matches)
+            tag = m.captures[1]
+            before_attrs = m.captures[2]
+            condition_str = m.captures[3]
+            after_attrs = m.captures[4]
+            inner = m.captures[5]
 
-        if result
-            combined_attrs = strip(string(before_attrs, " ", after_attrs))
-            # If the attribute is empty, do not add a space; if there is an attribute, add a space before it
-            attr_str = isempty(combined_attrs) ? "" : " " * combined_attrs
-            
-            return "<$tag$attr_str>$inner</$tag>"
-        else
-            return ""
+            cond_expr = Meta.parse(condition_str)
+            result_val = Core.eval(mod, cond_expr)
+
+            if result_val
+                combined_attrs = strip(string(before_attrs, " ", after_attrs))
+                attr_str = isempty(combined_attrs) ? "" : " " * combined_attrs
+                replacement = "<$tag$attr_str>$(strip(inner))</$tag>"
+            else
+                replacement = ""
+            end
+
+            curr = curr[1:m.offset-1] * replacement * curr[m.offset+length(m.match):end]
         end
-    end)
+    end
+
+    return curr
 end
 
 end # module SakuraEngine
