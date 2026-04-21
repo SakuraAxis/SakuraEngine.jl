@@ -22,8 +22,8 @@ IMPORTANT : This project is still in the development and testing stages, licensi
 
 ### SK Template Example
 
-```html
-#= Julia Script =#
+```jsx
+#= Julia script =#
 <sk-script>
 x = 10
 name = "Sakura"
@@ -40,18 +40,32 @@ items = [1, 2, 3]
 
 #= sk-if / sk-else-if / sk-else chain =#
 <div>
-  <p sk-if="score >= 90">Grade A - Excellent!</p>
-  <p sk-else-if="score >= 75">Grade B - Good.</p>
-  <p sk-else-if="score >= 60">Grade C - Pass.</p>
-  <p sk-else>Grade F - Failed.</p>
+  <p sk-if="score >= 90">
+    Grade A - Excellent!
+  </p>
+  <p sk-else-if="score >= 75">
+    Grade B - Good.
+  </p>
+  <p sk-else-if="score >= 60">
+    Grade C - Pass.
+  </p>
+  <p sk-else>
+    Grade F - Failed.
+  </p>
 </div>
 
 #= sk-for + nested sk-if / sk-else =#
 <ul>
   <li sk-for="item in items">
-    <span sk-if="item > 2">{{ item }} - big</span>
-    <span sk-else-if="item == 2">{{ item }} - medium</span>
-    <span sk-else>{{ item }} - small</span>
+    <span sk-if="item > 2">
+      {{ item }} - big
+    </span>
+    <span sk-else-if="item == 2">
+      {{ item }} - medium
+    </span>
+    <span sk-else>
+      {{ item }} - small
+    </span>
   </li>
 </ul>
 </sk-template>

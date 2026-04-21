@@ -1,3 +1,4 @@
+#= Julia script =#
 <sk-script>
 x = 10
 name = "Sakura"
@@ -12,7 +13,7 @@ items = [1, 2, 3]
   <p>{{ x + 5 }}</p>
 </div>
 
-<!-- sk-if / sk-else-if / sk-else chain -->
+#= sk-if / sk-else-if / sk-else chain =#
 <div>
   <p sk-if="score >= 90">
     Grade A - Excellent!
@@ -28,7 +29,7 @@ items = [1, 2, 3]
   </p>
 </div>
 
-<!-- sk-for + nested sk-if / sk-else -->
+#= sk-for + nested sk-if / sk-else =#
 <ul>
   <li sk-for="item in items">
     <span sk-if="item > 2">
