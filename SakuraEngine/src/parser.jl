@@ -131,9 +131,20 @@ Parse the attribute string into a key => value dictionary, supporting single and
 """
 function parse_attrs(attr_str::AbstractString)
     attrs = Dict{String,String}()
-    for m in eachmatch(r"""(\S+?)\s*=\s*["'](.*?)["']"""s, attr_str)
+
+    # Pass 1 - value attributes : key="value" or key='value'
+    for m in eachmatch(r"""([\w\-:@\.]+)\s*=\s*["'](.*?)["']"""s, attr_str)
         attrs[m.captures[1]] = m.captures[2]
     end
+
+    # Pass 2 - boolean attributes ( no `=` ) :
+    # Remove all value-attr spans, then scan remaining words
+    cleaned = replace(attr_str, r"""[\w\-:@\.]+\s*=\s*["'].*?["']"""s => " ")
+    for m in eachmatch(r"""([\w\-:@\.]+)""", cleaned)
+        key = m.captures[1]
+        haskey(attrs, key) || (attrs[key] = "")
+    end
+
     return attrs
 end
 

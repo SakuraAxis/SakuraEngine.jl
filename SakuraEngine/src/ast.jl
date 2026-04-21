@@ -15,10 +15,12 @@ struct InterpNode <: Node
     expr::Union{Expr, Symbol, Number}
 end
 
-# sk-if / v-if Conditional node
+# sk-if / sk-else-if / sk-else Conditional chain node
+# branches : Vector of ( condition_expr => children ) pairs
+# condition_expr is an Expr / Symbol for sk-if / sk-else-if
+# condition_expr is `nothing` for the unconditional sk-else branch
 struct IfNode <: Node
-    cond::Any
-    children::Vector{Node}
+    branches::Vector{Pair{Any, Vector{Node}}}
 end
 
 # General HTML element node

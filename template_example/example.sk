@@ -1,35 +1,44 @@
 <sk-script>
 x = 10
 name = "Sakura"
+score = 72
 
-items = [1,2,3]
+items = [1, 2, 3]
 </sk-script>
 
 <sk-template>
 <div>
-    <p>Hello {{ name }}</p>
-    <p>{{ x + 5 }}</p>
+  <p>Hello {{ name }}</p>
+  <p>{{ x + 5 }}</p>
 </div>
+
+<!-- sk-if / sk-else-if / sk-else chain -->
 <div>
-    <p
-      sk-if="x > 5"
-    >
-      big
-    </p>
-    <p
-      sk-if="x < 5"
-    >
-      small
-    </p>
+  <p sk-if="score >= 90">
+    Grade A - Excellent!
+  </p>
+  <p sk-else-if="score >= 75">
+    Grade B - Good.
+  </p>
+  <p sk-else-if="score >= 60">
+    Grade C - Pass.
+  </p>
+  <p sk-else>
+    Grade F - Failed.
+  </p>
 </div>
+
+<!-- sk-for + nested sk-if / sk-else -->
 <ul>
-  <li
-    sk-for="item in items"
-  >
-    <span
-      sk-if="item > 1"
-    >
-        {{ item }}
+  <li sk-for="item in items">
+    <span sk-if="item > 2">
+      {{ item }} - big
+    </span>
+    <span sk-else-if="item == 2">
+      {{ item }} - medium
+    </span>
+    <span sk-else>
+      {{ item }} - small
     </span>
   </li>
 </ul>

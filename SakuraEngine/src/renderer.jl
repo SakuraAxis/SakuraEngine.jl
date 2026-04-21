@@ -25,13 +25,20 @@ function render_nodes(nodes::Vector{Node}, mod::Module)
             write(io, string(val))
 
         elseif node isa IfNode
-            cond_val = try
-                Core.eval(mod, node.cond)
-            catch e
-                error("SakuraEngine [Renderer] : Conditional expression evaluation failed `$(node.cond)` - $e")
-            end
-            if cond_val
-                write(io, render_nodes(node.children, mod))
+            for (cond, children) in node.branches
+                should_render = if cond === nothing
+                    true # sk-else - unconditional
+                else
+                    try
+                        Core.eval(mod, cond)
+                    catch e
+                        error("SakuraEngine [Renderer] : Conditional expression evaluation failed `$(cond)` - $e")
+                    end
+                end
+                if should_render
+                    write(io, render_nodes(children, mod))
+                    break # Only the first matching branch is rendered
+                end
             end
 
         elseif node isa ElementNode
