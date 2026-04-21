@@ -22,7 +22,7 @@ IMPORTANT : This project is still in the development and testing stages, licensi
 
 ### SK Template Example
 
-```jsx
+```html
 #= Julia script =#
 <sk-script>
 x = 10
