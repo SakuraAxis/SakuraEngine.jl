@@ -2,6 +2,16 @@ module SakuraEngine
 
 export render_file, render_template
 
+abstract type Node end
+
+struct TextNode <: Node
+    content::String
+end
+
+struct InterpNode <: Node
+    expr::Union{Expr, Symbol, Number}
+end
+
 function extract_blocks(content::String)
     script_match = match(r"<sk-script>(.*?)</sk-script>"s, content)
     template_match = match(r"<sk-template>(.*?)</sk-template>"s, content)
@@ -21,19 +31,28 @@ function eval_script(script::AbstractString)
     return mod
 end
 
+function render_nodes(nodes::Vector{Node}, mod::Module)
+    io = IOBuffer()
+
+    for node in nodes
+        if node isa TextNode
+            write(io, node.content)
+
+        elseif node isa InterpNode
+            val = Core.eval(mod, node.expr)
+            write(io, string(val))
+        end
+    end
+
+    return String(take!(io))
+end
+
 function render_template(template::AbstractString, mod::Module)
     template = process_sk_for(template, mod)
     template = process_sk_if(template, mod)
 
-    result = template
-    for m in reverse(collect(eachmatch(r"\{\{(.*?)\}\}"s, template)))
-        clean_expr = strip(m.captures[1])
-        ex = Meta.parse(clean_expr)
-        val = Core.eval(mod, ex)
-        result = result[1:m.offset-1] * string(val) * result[m.offset+length(m.match):end]
-    end
-
-    return result
+    nodes = parse_interpolations(template)
+    return render_nodes(nodes, mod)
 end
 
 function render_file(path::String)
@@ -47,6 +66,38 @@ function render_file(path::String)
     # Replace multiple consecutive line breaks with a single line break
     html = replace(html, r"\n\s*\n" => "\n")
     return strip(html)
+end
+
+function parse_interpolations(template::String)
+    nodes = Node[]
+    pattern = r"\{\{(.*?)\}\}"s
+
+    last_idx = 1
+
+    for m in eachmatch(pattern, template)
+        start_idx = m.offset
+        end_idx = m.offset + length(m.match) - 1
+
+        # The preceding plain text
+        if start_idx > last_idx
+            text = template[last_idx:start_idx-1]
+            push!(nodes, TextNode(text))
+        end
+
+        # {{ expression }}
+        expr_str = strip(m.captures[1])
+        ex = Meta.parse(expr_str)
+        push!(nodes, InterpNode(ex))
+
+        last_idx = end_idx + 1
+    end
+
+    # The remaining text
+    if last_idx <= lastindex(template)
+        push!(nodes, TextNode(template[last_idx:end]))
+    end
+
+    return nodes
 end
 
 function process_sk_if(template::AbstractString, mod::Module)
