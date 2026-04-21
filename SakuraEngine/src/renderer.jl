@@ -1,0 +1,71 @@
+#=
+renderer.jl — Rendering layer
+Responsible for converting the AST Node tree + eval module into the final HTML string.
+=#
+
+"""
+    render_nodes(nodes, mod) -> String
+
+Recursively renders the AST node sequence into HTML strings.
+`mod` is a Julia Module that performs interpolation and conditional expressions.
+"""
+function render_nodes(nodes::Vector{Node}, mod::Module)
+    io = IOBuffer()
+
+    for node in nodes
+        if node isa TextNode
+            write(io, node.content)
+
+        elseif node isa InterpNode
+            val = try
+                Core.eval(mod, node.expr)
+            catch e
+                error("SakuraEngine [Renderer] : Interpolation expression evaluation failed `$(node.expr)` - $e")
+            end
+            write(io, string(val))
+
+        elseif node isa IfNode
+            cond_val = try
+                Core.eval(mod, node.cond)
+            catch e
+                error("SakuraEngine [Renderer] : Conditional expression evaluation failed `$(node.cond)` - $e")
+            end
+            if cond_val
+                write(io, render_nodes(node.children, mod))
+            end
+
+        elseif node isa ElementNode
+            write(io, "<", node.tag)
+            for (k, v) in node.attrs
+                write(io, " $k=\"$v\"")
+            end
+            write(io, ">")
+            write(io, render_nodes(node.children, mod))
+            write(io, "</", node.tag, ">")
+
+        elseif node isa ForNode
+            iterable = try
+                Core.eval(mod, node.iterable)
+            catch e
+                error("SakuraEngine [Renderer] : for iteration object evaluation failed `$(node.iterable)` - $e")
+            end
+            for val in iterable
+                Core.eval(mod, :($(node.var) = $val))
+                write(io, render_nodes(node.children, mod))
+            end
+        end
+    end
+
+    return String(take!(io))
+end
+
+"""
+    render_template(template, mod) -> String
+
+Parse the template string, apply directive transformations, and generate HTML.
+"""
+function render_template(template::AbstractString, mod::Module)
+    nodes = parse_elements(template)
+    nodes = transform_directives(nodes)
+    return render_nodes(nodes, mod)
+end
