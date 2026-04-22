@@ -30,6 +30,10 @@ name = "Sakura"
 score = 72
 
 items = [1, 2, 3]
+
+dynamic_url = "https://juliahub.com/"
+is_disabled = true
+dict_items = Dict("A" => 100, "B" => 200)
 </sk-script>
 
 <sk-template>
@@ -68,6 +72,24 @@ items = [1, 2, 3]
     </span>
   </li>
 </ul>
+
+#= sk-for with tuple destructuring =#
+<ul>
+  <li sk-for="(k, v) in dict_items">
+    {{ k }} : {{ v }}
+  </li>
+</ul>
+
+#= sk-bind =#
+<div>
+  <a
+    sk-bind:href="dynamic_url"
+    sk-bind:disabled="is_disabled"
+    class="btn"
+  >
+    Click Me
+  </a>
+</div>
 </sk-template>
 ```
 
