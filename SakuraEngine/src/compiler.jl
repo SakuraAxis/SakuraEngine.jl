@@ -1,5 +1,5 @@
 #=
-compiler.jl — File loading layer
+compiler.jl - File loading layer
 It is responsible for reading .sk files, splitting <sk-script> / <sk-template> blocks,
 executing scripts, and returning the final HTML.
 =#
@@ -21,7 +21,6 @@ function extract_blocks(content::String)
         @warn "SakuraEngine [Compiler] : The <sk-template> block was not found; an empty string will be returned"
     end
 
-    # Convert #= ... =# to <!-- ... --> in template
     template = replace(template, r"#=(.*?)=#"s => s"<!--\1-->")
 
     return script, template
@@ -44,10 +43,23 @@ function eval_script(script::AbstractString)
 end
 
 """
+    render_server_fragment(fragment, mod) -> String
+
+Render non-template top-level fragments with server interpolation only.
+This is used for sibling `<script>` blocks or other top-level HTML that should
+keep Vue syntax untouched while still allowing `{{|| expr ||}}`.
+"""
+function render_server_fragment(fragment::AbstractString, mod::Module)
+    cleaned = replace(String(fragment), r"#=(.*?)=#"s => "")
+    nodes = parse_interpolations(cleaned)
+    return render_nodes(nodes, mod)
+end
+
+"""
     render_file(path) -> String
 
-Complete rendering process entry : read .sk file → split blocks → execute script →
-parse template → apply instructions → render HTML → normalize whitespace.
+Complete rendering process entry : read .sk file, execute `<sk-script>`, render
+`<sk-template>`, preserve top-level sibling content, and normalize whitespace.
 """
 function render_file(path::String)
     isfile(path) || error("SakuraEngine [Compiler] : File not found `$path`")
@@ -55,9 +67,29 @@ function render_file(path::String)
     content = read(path, String)
     script, template = extract_blocks(content)
     mod = eval_script(script)
-    html = render_template(template, mod)
+    rendered_template = render_template(template, mod)
 
-    # Normalize extra blank lines
+    block_re = r"<sk-script>.*?</sk-script>|<sk-template>.*?</sk-template>"s
+    io = IOBuffer()
+    pos = 1
+
+    for m in eachmatch(block_re, content)
+        if m.offset > pos
+            write(io, render_server_fragment(content[pos:m.offset-1], mod))
+        end
+
+        if startswith(m.match, "<sk-template>")
+            write(io, rendered_template)
+        end
+
+        pos = m.offset + length(m.match)
+    end
+
+    if pos <= lastindex(content)
+        write(io, render_server_fragment(content[pos:end], mod))
+    end
+
+    html = String(take!(io))
     html = replace(html, r"\n{3,}" => "\n\n")
     html = replace(html, r"\n\s*\n" => "\n")
 

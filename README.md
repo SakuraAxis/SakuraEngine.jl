@@ -93,6 +93,67 @@ dict_items = Dict("A" => 100, "B" => 200)
 </sk-template>
 ```
 
+## Project Detail / Debug
+
+### Currently Run Below To Test
+
+```shell
+julia --project=. scripts/render_hydration_example.jl
+```
+
+### Current Mixed Template Rules
+
+SakuraEngine uses a two-phase template pipeline for Vue 3 style hydration :
+
+1. Server phase :
+   `sk-if`, `sk-else-if`, `sk-else`, `sk-for`, `sk-bind:*`, and `{{|| expr ||}}`
+   are executed by SakuraEngine on the server first.
+2. Client phase :
+   Vue directives and Vue interpolation such as `v-if`, `v-else-if`, `v-else`,
+   `v-for`, `v-model`, `@click`, `:prop`, and `{{ expr }}` are preserved in the
+   rendered HTML for Vue 3 to process on the client.
+
+Top-level sibling blocks are also allowed :
+
+- `<sk-script>` provides Julia server context
+- `<script type="application/json">` and `<script type="module">` may live at
+  the same level as `<sk-template>`
+- top-level sibling scripts are preserved in output
+- `{{|| expr ||}}` inside those sibling scripts is rendered by SakuraEngine
+- Vue syntax inside sibling scripts is left untouched
+
+### Directive Ownership
+
+- `{{|| expr ||}}` is server interpolation only.
+- `{{ expr }}` is Vue interpolation only.
+- `sk-*` directives own the server structural pass.
+- `v-*` directives own the client reactive pass.
+
+### Execution Order
+
+- `sk-for` runs before `sk-if`, matching the current transformer priority.
+- After SakuraEngine expands or removes nodes, the remaining template is passed
+  forward with Vue syntax intact.
+- This means Vue only sees the post-`sk-*` DOM shape.
+
+### Mixing Strategy
+
+Allowed and recommended :
+
+- `sk-for` wrapping markup that still contains `v-if`, `v-model`, `@click`, or `{{ }}`
+- `sk-if` gating a Vue-owned section
+- `{{|| expr ||}}` and `{{ expr }}` in the same file, as long as each side owns
+  its own data source
+
+Use caution :
+
+- Putting `sk-for` and `v-for` on the same element
+- Putting `sk-if` and `v-if` on the same element
+
+When both appear on the same element, SakuraEngine now keeps the Vue directive
+but executes the `sk-*` directive first and emits a warning during the server
+transform pass.
+
 ## Project Dependencies Details
 
 Vue3 License : [https://github.com/vuejs/core/blob/main/LICENSE](https://github.com/vuejs/core/blob/main/LICENSE)

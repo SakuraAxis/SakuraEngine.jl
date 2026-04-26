@@ -1,15 +1,14 @@
-#= 
-transformer.jl — Directive transformation layer
-Responsible for converting directive attributes ( sk-* / v-* ) on ElementNode
+#=
+transformer.jl - Directive transformation layer
+Responsible for converting server directive attributes ( sk-* ) on ElementNode
 into corresponding AST control nodes ( ForNode / IfNode ).
 =#
 
-# Supported directives — priority order kept consistent with Vue 3
-
-const FOR_DIRECTIVES = ("sk-for", "v-for")
-const IF_DIRECTIVES = ("sk-if", "v-if")
-const ELSEIF_DIRECTIVES = ("sk-else-if", "v-else-if")
-const ELSE_DIRECTIVES = ("sk-else", "v-else")
+# Supported server directives
+const SK_FOR_DIRECTIVES = ("sk-for",)
+const SK_IF_DIRECTIVES = ("sk-if",)
+const SK_ELSEIF_DIRECTIVES = ("sk-else-if",)
+const SK_ELSE_DIRECTIVES = ("sk-else",)
 
 """
     _parse_for_expr(expr) -> (var, iterable)
@@ -67,12 +66,13 @@ end
 """
     transform_directives(nodes) -> Vector{Node}
 
-Recursively convert directive attributes on ElementNode into control nodes.
+Recursively convert server directive attributes on ElementNode into control nodes.
 
 Processing priority : for > if > else-if / else
   - sk-for wraps the entire host element
-  - sk-if starts a conditional chain; contiguous sk-else-if/sk-elsesiblings
+  - sk-if starts a conditional chain; contiguous sk-else-if/sk-else siblings
     ( separated only by whitespace text ) are collected into the same IfNode
+Vue directives are preserved for the client pass.
 """
 function transform_directives(nodes::Vector{Node})
     new_nodes = Node[]
@@ -81,25 +81,29 @@ function transform_directives(nodes::Vector{Node})
     while i <= length(nodes)
         node = nodes[i]
 
-        # Non-element nodes pass through unchanged
         if !(node isa ElementNode)
             push!(new_nodes, node)
             i += 1
             continue
         end
 
-        # Recursively transform children first
         node = ElementNode(
             node.tag,
             node.attrs,
             transform_directives(node.children)
         )
 
-        # sk-for / v-for ( highest priority, wraps the whole element )
-        for_directive = _find_directive(node.attrs, FOR_DIRECTIVES)
+        if haskey(node.attrs, "sk-for") && haskey(node.attrs, "v-for")
+            @warn "SakuraEngine [Transformer] : `sk-for` and `v-for` were found on the same element. `sk-for` runs first and `v-for` is preserved for Vue."
+        end
+        if haskey(node.attrs, "sk-if") && haskey(node.attrs, "v-if")
+            @warn "SakuraEngine [Transformer] : `sk-if` and `v-if` were found on the same element. `sk-if` runs first and `v-if` is preserved for Vue."
+        end
+
+        for_directive = _find_directive(node.attrs, SK_FOR_DIRECTIVES)
         if for_directive !== nothing
             dir_key, dir_val = for_directive
-            var, iterable    = _parse_for_expr(dir_val)
+            var, iterable = _parse_for_expr(dir_val)
 
             clean_attrs = copy(node.attrs)
             delete!(clean_attrs, dir_key)
@@ -110,8 +114,7 @@ function transform_directives(nodes::Vector{Node})
             continue
         end
 
-        # sk-if / v-if  — collect the full if / else-if / else chain
-        if_directive = _find_directive(node.attrs, IF_DIRECTIVES)
+        if_directive = _find_directive(node.attrs, SK_IF_DIRECTIVES)
         if if_directive !== nothing
             dir_key, dir_val = if_directive
             cond_expr = _parse_if_expr(dir_val)
@@ -123,40 +126,37 @@ function transform_directives(nodes::Vector{Node})
             branches = Pair{Any, Vector{Node}}[cond_expr => Node[clean_node]]
             i += 1
 
-            # Look ahead: consume contiguous sk-else-if / sk-else siblings
             while i <= length(nodes)
                 sib = nodes[i]
 
-                # Skip pure-whitespace text that lives between the tags
                 if sib isa TextNode && isempty(strip(sib.content))
                     i += 1
                     continue
                 end
 
-                # Stop if next node is not an element
                 sib isa ElementNode || break
 
-                elseif_dir = _find_directive(sib.attrs, ELSEIF_DIRECTIVES)
-                else_dir = _find_directive(sib.attrs, ELSE_DIRECTIVES)
+                elseif_dir = _find_directive(sib.attrs, SK_ELSEIF_DIRECTIVES)
+                else_dir = _find_directive(sib.attrs, SK_ELSE_DIRECTIVES)
 
                 if elseif_dir !== nothing
                     ek, ev = elseif_dir
                     cond2 = _parse_if_expr(ev)
-                    attrs2 = copy(sib.attrs);  delete!(attrs2, ek)
+                    attrs2 = copy(sib.attrs)
+                    delete!(attrs2, ek)
                     child2 = ElementNode(sib.tag, attrs2, transform_directives(sib.children))
                     push!(branches, cond2 => Node[child2])
                     i += 1
-
                 elseif else_dir !== nothing
                     ek, _ = else_dir
-                    attrs2 = copy(sib.attrs);  delete!(attrs2, ek)
+                    attrs2 = copy(sib.attrs)
+                    delete!(attrs2, ek)
                     child2 = ElementNode(sib.tag, attrs2, transform_directives(sib.children))
-                    push!(branches, nothing => Node[child2])   # nothing = unconditional
+                    push!(branches, nothing => Node[child2])
                     i += 1
-                    break # sk-else is always the last branch
-
+                    break
                 else
-                    break # next sibling is unrelated - stop
+                    break
                 end
             end
 
@@ -164,11 +164,9 @@ function transform_directives(nodes::Vector{Node})
             continue
         end
 
-        # Stray sk-else-if / sk-else without a preceding sk-if
-        # ( should not happen in valid templates; silently drop the directive )
-        if _find_directive(node.attrs, ELSEIF_DIRECTIVES) !== nothing ||
-           _find_directive(node.attrs, ELSE_DIRECTIVES)   !== nothing
-            @warn "SakuraEngine [Transformer] : sk-else-if / sk-else found without a preceding sk-if — ignored"
+        if _find_directive(node.attrs, SK_ELSEIF_DIRECTIVES) !== nothing ||
+           _find_directive(node.attrs, SK_ELSE_DIRECTIVES) !== nothing
+            @warn "SakuraEngine [Transformer] : sk-else-if / sk-else found without a preceding sk-if - ignored"
             push!(new_nodes, node)
             i += 1
             continue
