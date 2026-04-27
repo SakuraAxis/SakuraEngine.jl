@@ -5,33 +5,33 @@ import { ref, computed, onMounted, reactive, watch } from 'vue'
 
 export default function setupUserLogic() {
 
-  interface Todo {
-    id: number;
-    text: string;
-    done: boolean;
-  }
+interface Todo {
+  id: number;
+  text: string;
+  done: boolean;
+}
 
-  interface ServerTag {
-    id: string;
-    name: string;
-  }
+interface ServerTag {
+  id: string;
+  name: string;
+}
 
-  const title = ref<string>("Sakura mix Vue SFC")
-  const user = ref<string>("Sakura")
-  const count = ref<number>(5)
-  const todos = ref<Todo[]>([{"done":true,"id":1,"label":"Setup Sakura-SFC "},{"done":false,"id":2,"label":"Enjoy Single File Dev "}])
-  const serverTags = ref<ServerTag[]>(["ssr","hydration","sfc"])
-  
-  const ready = ref<boolean>(false)
+const title = ref<string>("Sakura mix Vue SFC")
+const user = ref<string>("Sakura")
+const count = ref<number>(5)
+const todos = ref<Todo[]>([{"done":true,"id":1,"label":"Setup Sakura-SFC "},{"done":false,"id":2,"label":"Enjoy Single File Dev "}])
+const serverTags = ref<ServerTag[]>(["ssr","hydration","sfc"])
 
-  const pending = computed((): number => {
-    return todos.value.filter((t: Todo) => !t.done).length
-  })
+const ready = ref<boolean>(false)
 
-  onMounted(() => {
-    ready.value = true
-  })
+const pending = computed((): number => {
+  return todos.value.filter((t: Todo) => !t.done).length
+})
 
-  return { title, user, count, todos, serverTags, ready, pending }
+onMounted(() => {
+  ready.value = true
+})
+
+return { title, user, count, todos, serverTags, ready, pending }
 
 }

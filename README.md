@@ -5,7 +5,7 @@
 
 <br>
 
-<img src="https://github.com/zzztzzzt/SakuraEngine.jl/blob/main/logo/logo.webp" alt="sakura-engine-logo" style="height: 280px; width: auto;" />
+<img src="https://github.com/SakuraAxis/SakuraEngine.jl/blob/main/logo/logo.webp" alt="sakura-engine-logo" style="height: 280px; width: auto;" />
 
 ### SakuraEngine - Julia SSR Template Engine with Vue Hydration.
 

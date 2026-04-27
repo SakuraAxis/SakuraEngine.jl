@@ -15,34 +15,34 @@ pending_count = count(todo -> !todo["done"], todos)
 
 #= TypeScript / Vue Logic =#
 <script type="sk-ts">
-  interface Todo {
-    id: number;
-    text: string;
-    done: boolean;
-  }
+interface Todo {
+  id: number;
+  text: string;
+  done: boolean;
+}
 
-  interface ServerTag {
-    id: string;
-    name: string;
-  }
+interface ServerTag {
+  id: string;
+  name: string;
+}
 
-  const title = ref<string>({{|| title ||}})
-  const user = ref<string>({{|| user_name ||}})
-  const count = ref<number>({{|| initial_count ||}})
-  const todos = ref<Todo[]>({{|| todos ||}})
-  const serverTags = ref<ServerTag[]>({{|| server_tags ||}})
-  
-  const ready = ref<boolean>(false)
+const title = ref<string>({{|| title ||}})
+const user = ref<string>({{|| user_name ||}})
+const count = ref<number>({{|| initial_count ||}})
+const todos = ref<Todo[]>({{|| todos ||}})
+const serverTags = ref<ServerTag[]>({{|| server_tags ||}})
 
-  const pending = computed((): number => {
-    return todos.value.filter((t: Todo) => !t.done).length
-  })
+const ready = ref<boolean>(false)
 
-  onMounted(() => {
-    ready.value = true
-  })
+const pending = computed((): number => {
+  return todos.value.filter((t: Todo) => !t.done).length
+})
 
-  return { title, user, count, todos, serverTags, ready, pending }
+onMounted(() => {
+  ready.value = true
+})
+
+return { title, user, count, todos, serverTags, ready, pending }
 </script>
 
 <script type="module" src="/src/entry-client.ts"></script>
