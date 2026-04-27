@@ -72,7 +72,7 @@ return { title, user, count, todos, serverTags, ready, pending }
 
 <script type="module" src="/src/entry-client.ts"></script>
 
-#= Template Area ( SRR + Vue Hydration ) =#
+#= Template Area ( SSR + Vue Hydration ) =#
 <sk-template>
 <section id="vue-panel">
   <h1>{{ title }}</h1>
