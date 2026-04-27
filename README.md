@@ -20,76 +20,102 @@ IMPORTANT : This project is still in the development and testing stages, licensi
 
 ## WIP Project SakuraEngine
 
-### SK Template Example
+### SK mix Vue3 Template Example
 
 ```html
 #= Julia script =#
 <sk-script>
-x = 10
-name = "Sakura"
-score = 72
-
-items = [1, 2, 3]
-
-dynamic_url = "https://juliahub.com/"
-is_disabled = true
-dict_items = Dict("A" => 100, "B" => 200)
+title = "Sakura mix Vue SFC"
+user_name = "Sakura"
+show_panel = true
+disable_increment = false
+initial_count = 5
+server_tags = ["ssr", "hydration", "sfc"]
+todos = [
+    Dict("id" => 1, "label" => "Setup Sakura-SFC ", "done" => true),
+    Dict("id" => 2, "label" => "Enjoy Single File Dev ", "done" => false),
+]
+pending_count = count(todo -> !todo["done"], todos)
 </sk-script>
 
+#= TypeScript / Vue Logic =#
+<script type="sk-ts">
+  interface Todo {
+    id: number;
+    text: string;
+    done: boolean;
+  }
+
+  interface ServerTag {
+    id: string;
+    name: string;
+  }
+
+  const title = ref<string>({{|| title ||}})
+  const user = ref<string>({{|| user_name ||}})
+  const count = ref<number>({{|| initial_count ||}})
+  const todos = ref<Todo[]>({{|| todos ||}})
+  const serverTags = ref<ServerTag[]>({{|| server_tags ||}})
+  
+  const ready = ref<boolean>(false)
+
+  const pending = computed((): number => {
+    return todos.value.filter((t: Todo) => !t.done).length
+  })
+
+  onMounted(() => {
+    ready.value = true
+  })
+
+  return { title, user, count, todos, serverTags, ready, pending }
+</script>
+
+<script type="module" src="/src/entry-client.ts"></script>
+
 <sk-template>
-<div>
-  <p>Hello {{|| name ||}}</p>
-  <p>{{|| x + 5 ||}}</p>
-</div>
+<section id="vue-panel" sk-if="show_panel">
+  <h1>{{ title }}</h1>
+  <p>Server : {{|| user_name ||}} / Client : {{ user }}</p>
+  
+  <p v-if="ready">Client Pending : {{ pending }}</p>
+  <p v-else>Server Pending : {{|| pending_count ||}}</p>
 
-#= sk-if / sk-else-if / sk-else chain =#
-<div>
-  <p sk-if="score >= 90">
-    Grade A - Excellent!
-  </p>
-  <p sk-else-if="score >= 75">
-    Grade B - Good.
-  </p>
-  <p sk-else-if="score >= 60">
-    Grade C - Pass.
-  </p>
-  <p sk-else>
-    Grade F - Failed.
-  </p>
-</div>
+  <button @click="count++">
+    Count: {{ count }}
+  </button>
 
-#= sk-for + nested sk-if / sk-else =#
-<ul>
-  <li sk-for="item in items">
-    <span sk-if="item > 2">
-      {{|| item ||}} - big
-    </span>
-    <span sk-else-if="item == 2">
-      {{|| item ||}} - medium
-    </span>
-    <span sk-else>
-      {{|| item ||}} - small
-    </span>
-  </li>
-</ul>
+  <h3>Tags ( Hybrid List )</h3>
+  <ul>
+    #= sk-for for SEO, v-for for Reactivity =#
+    <li
+      sk-for="tag in server_tags"
+      v-for="tag in serverTags"
+      :key="tag"
+    >
+      tag = {{ tag }}
+    </li>
+  </ul>
 
-#= sk-for with tuple destructuring =#
-<ul>
-  <li sk-for="(k, v) in dict_items">
-    {{|| k ||}} : {{|| v ||}}
-  </li>
-</ul>
+  <h3>Todos</h3>
+  <ul>
+    <li
+      sk-for="todo in todos"
+      v-for="todo in todos"
+      :key="todo.id"
+    >
+      <span
+        :style="{ textDecoration: todo.done ? 'line-through' : 'none' }"
+      >
+        {{ todo.label }}
+      </span>
+      <button
+        @click="todo.done = !todo.done"
+      >Toggle</button>
+    </li>
+  </ul>
 
-#= sk-bind =#
-<div>
-  <a
-    sk-bind:href="dynamic_url"
-    sk-bind:disabled="is_disabled"
-    class="btn"
-  >
-    Click Me
-  </a>
-</div>
+  <p>Status : All zones are now hydrated and reactive via Sakura-SFC.</p>
+</section>
 </sk-template>
 ```
 
