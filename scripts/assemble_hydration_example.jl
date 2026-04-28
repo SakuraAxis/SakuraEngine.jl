@@ -13,8 +13,8 @@ isfile(panel_html_path) || error("Vue panel HTML not found: $panel_html_path")
 html = read(base_html_path, String)
 panel_html = strip(read(panel_html_path, String))
 
-panel_match = match(r"""(<section\b[^>]*id="vue-panel"[^>]*>)(.*?)(</section>)"""s, html)
-panel_match === nothing && error("Could not find #vue-panel in base HTML.")
+panel_match = match(r"""(<section\b[^>]*id="sk-hydration-area"[^>]*>)(.*?)(</section>)"""s, html)
+panel_match === nothing && error("Could not find #sk-hydration-area in base HTML.")
 
 open_tag = String(panel_match.captures[1])
 close_tag = String(panel_match.captures[3])

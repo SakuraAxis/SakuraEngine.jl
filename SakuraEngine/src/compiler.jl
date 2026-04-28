@@ -69,7 +69,8 @@ function render_file(path::String)
     mod = eval_script(script)
     rendered_template = render_template(template, mod)
 
-    block_re = r"<sk-script>.*?</sk-script>|<sk-template>.*?</sk-template>"s
+    has_vue_logic = occursin(r"<script type=\"sk-ts\">"s, content)
+    block_re = r"<sk-script>.*?</sk-script>|<sk-template>.*?</sk-template>|<script type=\"sk-ts\">.*?</script>"s
     io = IOBuffer()
     pos = 1
 
@@ -90,6 +91,12 @@ function render_file(path::String)
     end
 
     html = String(take!(io))
+
+    if has_vue_logic
+        client_entry = get_config(:client_entry, "/src/entry-client.ts")
+        html *= "\n<script type=\"module\" src=\"$client_entry\"></script>"
+    end
+
     html = replace(html, r"\n{3,}" => "\n\n")
     html = replace(html, r"\n\s*\n" => "\n")
 

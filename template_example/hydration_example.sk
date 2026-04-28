@@ -45,11 +45,9 @@ onMounted(() => {
 return { title, user, count, todos, serverTags, ready, pending }
 </script>
 
-<script type="module" src="/src/entry-client.ts"></script>
-
 #= Template Area ( SSR + Vue Hydration ) =#
 <sk-template>
-<section id="vue-panel">
+<section id="sk-hydration-area">
   <h1>{{ title }}</h1>
   <p>Server : {{|| user_name ||}} / Client : {{ user }}</p>
   <p
@@ -57,7 +55,7 @@ return { title, user, count, todos, serverTags, ready, pending }
   >
     Hello from SakuraEngine server side
   </p>
-  
+
   <p v-if="ready">Client Pending : {{ pending }}</p>
   <p v-else>Server Pending : {{|| pending_count ||}}</p>
 
