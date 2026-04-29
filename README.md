@@ -20,46 +20,49 @@ IMPORTANT : This project is still in the development and testing stages, licensi
 
 ## How To Use
 
-### Follow below example file, or directly test it :
+### Option 1. Use with Vite ( Recommended ) :
 
+Choose Vue
 ```shell
-julia --project=. scripts/render_hydration_example.jl
+npm create vite@latest
+```
+
+Make sure you're in Vue project
+```shell
+npm install tsx
+```
+
+Assuming the Vue project is named `vue-project`
+```julia
+root_dir = joinpath(@__DIR__, "path", "to", "your", "root_dir")
+input_path = joinpath(root_dir, "path", "to", "your", "template.sk")
+vue_project_dir = joinpath(root_dir, "vue-project")
+output_ts_dir = joinpath(vue_project_dir, "src", "sakura")
 ```
 
 ```julia
-using SakuraEngine
+import SakuraEngine as SKE
 
-root_dir = joinpath(@__DIR__, "..")
-input_path = joinpath(root_dir, "template_example", "hydration_example.sk")
-vue_project_dir = joinpath(root_dir, "sakura-vue")
-output_ts_dir = joinpath(vue_project_dir, "src", "sakura")
+SKE.init_frontend(vue_project_dir)
 
-println(">>> Sakura-SFC Pipeline Start")
+SKE.export_assets(input_path, output_ts_dir)
 
-init_frontend(vue_project_dir)
-
-# 1. Export Vue assets ( logic and templates )
-export_assets(input_path, output_ts_dir)
-println(">>> Vue assets exported to: $output_ts_dir")
-
-# 2. Using Node.js for SSR rendering
-println(">>> Executing Node.js SSR...")
 vue_html = cd(vue_project_dir) do
     read(`npx.cmd tsx scripts/render-vue-panel.ts`, String)
 end
 
+final_html = SKE.render_file(input_path; vue_ssr=vue_html)
+```
 
-# 3. Render the final HTML with hydration data
-final_html = render_file(input_path; vue_ssr=vue_html)
+and then go into `vue-project`
+```shell
+npm run dev
+```
 
-# 4. Output preview
-output_index = joinpath(vue_project_dir, "index.html")
-write(output_index, final_html)
-println(">>> Success! Hydrated HTML saved to : $output_index")
+### Option 2. Test it in this repo :
 
-println("||||||  Run Below To Test  ||||||")
-println("cd sakura-vue")
-println("npm run dev")
+```shell
+julia --project=. scripts/render_hydration_example.jl
 ```
 
 ## Template ( SK SSR mix Vue3 Hydration )
