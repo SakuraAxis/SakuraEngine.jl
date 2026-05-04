@@ -39,15 +39,25 @@ function highlight_sk(filename::String)
 
     # helpers
 
-    # Highlight {{|| expr ||}} inside an already-extracted string
+    # Highlight {{|| expr ||}} and {{ expr }} inside an already-extracted string
     function highlight_expressions(s::AbstractString)
-        replace(String(s), r"\{\{\|\|.*?\|\|\}\}"s => sub -> begin
+        s = replace(String(s), r"\{\{\|\|.*?\|\|\}\}"s => sub -> begin
             sub = String(sub)
             inner = sub[5:end-4]
             has_op = occursin(r"[+\-*/%&|=!><]", inner)
             color = has_op ? theme[:expression_computed] : theme[:expression]
             theme[:delimiter] * "{{" * reset *
             color * "||" * inner * "||" * reset *
+            theme[:delimiter] * "}}" * reset
+        end)
+
+        replace(s, r"\{\{(?!\|\|).*?\}\}"s => sub -> begin
+            sub = String(sub)
+            inner = sub[3:end-2]
+            has_op = occursin(r"[+\-*/%&|=!><]", inner)
+            color = has_op ? theme[:expression_computed] : theme[:expression]
+            theme[:delimiter] * "{{" * reset *
+            color * inner * reset *
             theme[:delimiter] * "}}" * reset
         end)
     end
@@ -190,5 +200,5 @@ end
 if !isempty(ARGS)
     highlight_sk(ARGS[1])
 else
-    println("Usage : julia --project=. --color=yes scripts/highlight_sk.jl template_example/example.sk")
+    println("Usage : julia --project=. --color=yes scripts/highlight_sk.jl template_example/hydration_example.sk")
 end
