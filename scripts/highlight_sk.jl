@@ -10,15 +10,35 @@ function highlight_sk(filename::String)
         "sk-script"   => "\033[38;2;149;88;178m",
         "sk-template" => "\033[38;2;149;88;178m",
     )
+    sk_attr_color = "\033[38;2;255;242;184m"
     sk_attrs = Dict(
-        "sk-if"      => "\033[38;2;255;242;184m",
-        "sk-else-if" => "\033[38;2;255;242;184m",
-        "sk-else"    => "\033[38;2;255;242;184m",
-        "sk-on"      => "\033[38;2;255;242;184m",
-        "sk-for"     => "\033[38;2;255;242;184m",
-        "sk-bind"    => "\033[38;2;255;242;184m",
-        "sk-model"   => "\033[38;2;255;242;184m",
-        "sk-show"    => "\033[38;2;255;242;184m",
+        "sk-if"      => sk_attr_color,
+        "sk-else-if" => sk_attr_color,
+        "sk-else"    => sk_attr_color,
+        "sk-on"      => sk_attr_color,
+        "sk-for"     => sk_attr_color,
+        "sk-bind"    => sk_attr_color,
+        "sk-model"   => sk_attr_color,
+        "sk-show"    => sk_attr_color,
+    )
+    vue_attr_color = "\033[38;2;186;255;205m"
+    vue_shorthand_attr_color = "\033[38;2;198;255;140m"
+    vue_attrs = Dict(
+        "v-if"      => vue_attr_color,
+        "v-else-if" => vue_attr_color,
+        "v-else"    => vue_attr_color,
+        "v-for"     => vue_attr_color,
+        "v-bind"    => vue_attr_color,
+        "v-on"      => vue_attr_color,
+        "v-model"   => vue_attr_color,
+        "v-show"    => vue_attr_color,
+        "v-html"    => vue_attr_color,
+        "v-text"    => vue_attr_color,
+        "v-slot"    => vue_attr_color,
+        "v-pre"     => vue_attr_color,
+        "v-cloak"   => vue_attr_color,
+        "v-once"    => vue_attr_color,
+        "v-memo"    => vue_attr_color,
     )
     theme = Dict(
         :expression          => "\033[38;2;255;117;239m",
@@ -36,6 +56,7 @@ function highlight_sk(filename::String)
 
     sk_tag_pattern  = join(keys(sk_tags),  "|")
     sk_attr_pattern = join(keys(sk_attrs), "|")
+    vue_attr_pattern = join(keys(vue_attrs), "|")
 
     # helpers
 
@@ -54,10 +75,8 @@ function highlight_sk(filename::String)
         replace(s, r"\{\{(?!\|\|).*?\}\}"s => sub -> begin
             sub = String(sub)
             inner = sub[3:end-2]
-            has_op = occursin(r"[+\-*/%&|=!><]", inner)
-            color = has_op ? theme[:expression_computed] : theme[:expression]
             theme[:delimiter] * "{{" * reset *
-            color * inner * reset *
+            theme[:delimiter] * inner * reset *
             theme[:delimiter] * "}}" * reset
         end)
     end
@@ -75,7 +94,23 @@ function highlight_sk(filename::String)
                 color * a * reset
             end)
 
-        # b. class= attribute
+        # b. Vue attributes ( v-bind:href, v-on:click, v-slot )
+        vue_attr_name_re = "\\b(?:$(vue_attr_pattern))(?:[:.][A-Za-z_][A-Za-z0-9_\\-]*)*"
+        processed = replace(processed,
+            Regex("($vue_attr_name_re)(\\s*=\\s*(?:\"[^\"]*\"|'[^']*'|[^\\s>]+))?", "i") => a -> begin
+                a = String(a)
+                vue_attr_color * a * reset
+            end)
+
+        # c. Vue shorthand attributes ( :href, @click, #default )
+        vue_shorthand_attr_name_re = "[:@#][A-Za-z_][A-Za-z0-9_:\\-]*(?:\\.[A-Za-z_][A-Za-z0-9_\\-]*)*"
+        processed = replace(processed,
+            Regex("($vue_shorthand_attr_name_re)(\\s*=\\s*(?:\"[^\"]*\"|'[^']*'|[^\\s>]+))?", "i") => a -> begin
+                a = String(a)
+                vue_shorthand_attr_color * a * reset
+            end)
+
+        # d. class= attribute
         processed = replace(processed,
             r"(class\s*=\s*[\"'])([^\"']*)([\"'])"i => c -> begin
                 c = String(c)
@@ -89,28 +124,36 @@ function highlight_sk(filename::String)
         processed
     end
 
-    # Split content into segments : sk-script blocks vs everything else
+    # Split content into segments : script-like blocks vs everything else
 
     #=
     Strategy : tokenise the file into a list of ( kind, text ) pairs, then
-    process each kind independently so sk-script bodies are never touched
-    by HTML/expression regexes
+    process each kind independently so TypeScript generics such as ref<string>
+    are never mistaken for HTML tags.
     =#
 
     segments = Tuple{Symbol,String}[]
 
-    # Regex that captures a full <sk-script>...</sk-script> block ( multiline )
-    sk_script_re = r"(<sk-script(?:\s(?:\"[^\"]*\"|'[^']*'|[^>])*)?>)(.*?)(</sk-script>)"si
+    # Regex that captures script-like blocks ( multiline )
+    script_block_re = r"(<sk-script(?:\s(?:\"[^\"]*\"|'[^']*'|[^>])*)?>)(.*?)(</sk-script>)|(<script(?:\s(?:\"[^\"]*\"|'[^']*'|[^>])*)?>)(.*?)(</script>)"si
 
     pos = 1
-    for m in eachmatch(sk_script_re, content)
+    for m in eachmatch(script_block_re, content)
         # text before this block
         if m.offset > pos
             push!(segments, (:html, content[pos : m.offset - 1]))
         end
-        push!(segments, (:sk_open, m[1])) # <sk-script>
-        push!(segments, (:sk_body, m[2])) # raw script content
-        push!(segments, (:sk_close, m[3])) # </sk-script>
+
+        if m.captures[1] !== nothing
+            push!(segments, (:sk_open, String(m.captures[1]))) # <sk-script>
+            push!(segments, (:sk_body, String(m.captures[2]))) # raw Julia content
+            push!(segments, (:sk_close, String(m.captures[3]))) # </sk-script>
+        else
+            push!(segments, (:script_open, String(m.captures[4]))) # <script>
+            push!(segments, (:script_body, String(m.captures[5]))) # raw JS/TS content
+            push!(segments, (:script_close, String(m.captures[6]))) # </script>
+        end
+
         pos = m.offset + length(m.match)
     end
     # remainder
@@ -179,13 +222,28 @@ function highlight_sk(filename::String)
         tag_color * s * reset
     end
 
+    function process_script_open(s::AbstractString)
+        process_html(s)
+    end
+
+    function process_script_body(s::AbstractString)
+        highlight_expressions(s)
+    end
+
+    function process_script_close(s::AbstractString)
+        process_html(s)
+    end
+
     highlighted = join(
         map(segments) do (kind, text)
-            if     kind === :html     ; process_html(text)
-            elseif kind === :sk_open  ; process_sk_open(text)
-            elseif kind === :sk_body  ; process_sk_body(text)
-            elseif kind === :sk_close ; process_sk_close(text)
-            else                      ; text
+            if     kind === :html         ; process_html(text)
+            elseif kind === :sk_open      ; process_sk_open(text)
+            elseif kind === :sk_body      ; process_sk_body(text)
+            elseif kind === :sk_close     ; process_sk_close(text)
+            elseif kind === :script_open  ; process_script_open(text)
+            elseif kind === :script_body  ; process_script_body(text)
+            elseif kind === :script_close ; process_script_close(text)
+            else                          ; text
             end
         end
     )
