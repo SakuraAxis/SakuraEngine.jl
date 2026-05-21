@@ -168,6 +168,12 @@ return { title, user, count, todos, serverTags, ready, pending }
 </sk-template>
 ```
 
+## Highlight SK Template
+
+```shell
+julia --project=. --color=yes scripts/highlight_sk.jl template_example/hydration_example.sk
+```
+
 ## Project Detail / Debug
 ### Current Mixed Template Rules
 
